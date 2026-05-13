@@ -41,7 +41,7 @@ pipeline {
                                 export FLASK_APP=cp1.2/app/api.py
                                 export FLASK_ENV=development
                                 flask run &
-                                java -jar /home/vagrant/wiremock.jar --port 9090 --root-dir cp1.2/test/wiremock &
+                                java -jar /tmp/wiremock.jar --port 9090 --root-dir cp1.2/test/wiremock &
                                 sleep 3
                                 export PYTHONPATH=$WORKSPACE/cp1.2
                                 pytest --junitxml=result-rest.xml cp1.2/test/rest
