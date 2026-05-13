@@ -1,0 +1,123 @@
+pipeline {
+    agent none
+
+    stages {
+
+        stage('Get Code') {
+            agent { label 'principal' }
+            steps {
+                git 'https://github.com/adrijar/devops-cloud-unir.git'
+                sh 'whoami && hostname && echo WORKSPACE=$WORKSPACE'
+            }
+        }
+
+        stage('Build') {
+            agent { label 'principal' }
+            steps {
+                echo 'Esto es Python, no hay que compilar nada!'
+                sh 'whoami && hostname && ls -la'
+            }
+        }
+
+        stage('Tests') {
+            parallel {
+
+                stage('Unit') {
+                    agent { label 'principal' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh '''
+                                whoami && hostname && echo WORKSPACE=$WORKSPACE
+                                export PYTHONPATH=$WORKSPACE/cp1.2
+                                pytest --junitxml=result-unit.xml cp1.2/test/unit
+                            '''
+                        }
+                    }
+                }
+
+                stage('Rest') {
+                    agent { label 'principal' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh '''
+                                whoami && hostname && echo WORKSPACE=$WORKSPACE
+                                export FLASK_APP=cp1.2/app/api.py
+                                export FLASK_ENV=development
+                                flask run &
+                                java -jar /tmp/wiremock.jar --port 9090 --root-dir cp1.2/test/wiremock &
+                                sleep 5
+                                export PYTHONPATH=$WORKSPACE/cp1.2
+                                pytest --junitxml=result-rest.xml cp1.2/test/rest
+                            '''
+                        }
+                    }
+                }
+
+                stage('Static') {
+                    agent { label 'node1' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh '''
+                                whoami && hostname && echo WORKSPACE=$WORKSPACE
+                                flake8 --format=pylint --exit-zero cp1.2/app > flake8.out
+                            '''
+                        }
+                    }
+                }
+
+                stage('Security') {
+                    agent { label 'node1' }
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh '''
+                                whoami && hostname && echo WORKSPACE=$WORKSPACE
+                                bandit -r cp1.2/app -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}" --exit-zero
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Coverage') {
+            agent { label 'principal' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        whoami && hostname && echo WORKSPACE=$WORKSPACE
+                        export PYTHONPATH=$WORKSPACE/cp1.2
+                        coverage run --source=cp1.2/app --branch -m pytest cp1.2/test/unit
+                        coverage xml
+                    '''
+                }
+            }
+        }
+
+        stage('Performance') {
+            agent { label 'node2' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        whoami && hostname && echo WORKSPACE=$WORKSPACE
+                        export FLASK_APP=cp1.2/app/api.py
+                        fuser -k 5000/tcp || true
+                        sleep 2
+                        flask run &
+                        sleep 3
+                        jmeter -n -t cp1.2/test/jmeter/flask.jmx -l flask.jtl
+                    '''
+                }
+            }
+        }
+
+        stage('Results') {
+            agent { label 'principal' }
+            steps {
+                junit 'result*.xml'
+                publishCoverage adapters: [coberturaAdapter('coverage.xml')], sourceFileResolver: sourceFiles('NEVER_STORE')
+                recordIssues tools: [flake8(pattern: 'flake8.out'), pyLint(pattern: 'bandit.out')]
+                perfReport sourceDataFiles: 'flask.jtl'
+            }
+        }
+    }
+}
