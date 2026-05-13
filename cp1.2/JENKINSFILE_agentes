@@ -61,6 +61,7 @@ pipeline {
                                 whoami && hostname && echo WORKSPACE=$WORKSPACE
                                 flake8 --format=pylint --exit-zero cp1.2/app > flake8.out
                             '''
+                            stash name: 'flake8-result', includes: 'flake8.out'
                         }
                     }
                 }
@@ -73,6 +74,7 @@ pipeline {
                                 whoami && hostname && echo WORKSPACE=$WORKSPACE
                                 bandit -r cp1.2/app -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}" --exit-zero
                             '''
+                            stash name: 'bandit-result', includes: 'bandit.out'
                         }
                     }
                 }
@@ -104,8 +106,10 @@ pipeline {
                         sleep 2
                         flask run &
                         sleep 3
+                        export JVM_ARGS="-Xms256m -Xmx512m"
                         jmeter -n -t cp1.2/test/jmeter/flask.jmx -l flask.jtl
                     '''
+                    stash name: 'jmeter-result', includes: 'flask.jtl'
                 }
             }
         }
@@ -113,6 +117,9 @@ pipeline {
         stage('Results') {
             agent { label 'principal' }
             steps {
+                unstash 'flake8-result'
+                unstash 'bandit-result'
+                unstash 'jmeter-result'
                 junit 'result*.xml'
                 publishCoverage adapters: [coberturaAdapter('coverage.xml')], sourceFileResolver: sourceFiles('NEVER_STORE')
                 recordIssues tools: [flake8(pattern: 'flake8.out'), pyLint(pattern: 'bandit.out')]
