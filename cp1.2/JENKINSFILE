@@ -103,7 +103,8 @@ pipeline {
         stage('Results') {
             steps {
                 junit 'result*.xml'
-                cobertura coberturaReportFile: 'coverage.xml', failNoReports: false, failUnhealthy: false, failUnstable: false
+                recordIssues tools: [flake8(pattern: 'flake8.out'), pyLint(pattern: 'bandit.out')]
+                publishCoverage adapters: [coberturaAdapter('coverage.xml')], sourceFileResolver: sourceFiles('NEVER_STORE')
                 recordIssues tools: [flake8(pattern: 'flake8.out'), pyLint(pattern: 'bandit.out')]
                 perfReport sourceDataFiles: 'flask.jtl'
             }
