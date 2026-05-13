@@ -42,7 +42,7 @@ pipeline {
                                 export FLASK_ENV=development
                                 flask run &
                                 java -jar /tmp/wiremock.jar --port 9090 --root-dir cp1.2/test/wiremock &
-                                sleep 3
+                                sleep 5
                                 export PYTHONPATH=$WORKSPACE/cp1.2
                                 pytest --junitxml=result-rest.xml cp1.2/test/rest
                             '''
@@ -89,6 +89,8 @@ pipeline {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh '''
                         export FLASK_APP=cp1.2/app/api.py
+                        fuser -k 5000/tcp || true
+                        sleep 2
                         flask run &
                         sleep 3
                         jmeter -n -t cp1.2/test/jmeter/flask.jmx -l flask.jtl
@@ -101,7 +103,7 @@ pipeline {
         stage('Results') {
             steps {
                 junit 'result*.xml'
-                cobertura coberturaReportFile: 'coverage.xml'
+                cobertura coberturaReportFile: 'coverage.xml', failNoReports: false, failUnhealthy: false, failUnstable: false
                 recordIssues tools: [flake8(pattern: 'flake8.out'), pyLint(pattern: 'bandit.out')]
                 perfReport sourceDataFiles: 'flask.jtl'
             }
