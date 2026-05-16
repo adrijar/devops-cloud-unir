@@ -103,18 +103,15 @@ pipeline {
                     '''
                 }
             }
-            post {
-                always {
-                    publishCoverage adapters: [coberturaAdapter('coverage.xml')],
-                        sourceFileResolver: sourceFiles('NEVER_STORE'),
-                        qualityGates: [
-                            [threshold: 85.0, metric: 'LINE', baseline: 'PROJECT', criticality: 'UNSTABLE'],
-                            [threshold: 95.0, metric: 'LINE', baseline: 'PROJECT', criticality: 'FAILURE'],
-                            [threshold: 80.0, metric: 'BRANCH', baseline: 'PROJECT', criticality: 'UNSTABLE'],
-                            [threshold: 90.0, metric: 'BRANCH', baseline: 'PROJECT', criticality: 'FAILURE']
-                        ]
-                }
-            }
+           post {
+    always {
+        publishCoverage adapters: [coberturaAdapter(
+            path: 'coverage.xml',
+            thresholds: [[thresholdTarget: 'Line', unhealthyThreshold: 85.0, unstableThreshold: 95.0],
+                         [thresholdTarget: 'Branch', unhealthyThreshold: 80.0, unstableThreshold: 90.0]]
+        )], sourceFileResolver: sourceFiles('NEVER_STORE')
+    }
+}
         }
 
         stage('Performance') {
