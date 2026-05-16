@@ -1,0 +1,4 @@
+[run]
+omit =
+    */api.py
+    */__init__.py
