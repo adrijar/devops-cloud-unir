@@ -5,7 +5,7 @@ pipeline {
 
         stage('Get Code') {
             steps {
-                git 'https://github.com/adrijar/devops-cloud-unir.git'
+                checkout scm
             }
         }
 
