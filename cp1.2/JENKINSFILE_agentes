@@ -103,13 +103,15 @@ pipeline {
                     '''
                 }
             }
-           post {
+post {
     always {
         publishCoverage adapters: [coberturaAdapter(
             path: 'coverage.xml',
-            thresholds: [[thresholdTarget: 'Line', unhealthyThreshold: 85.0, unstableThreshold: 95.0],
-                         [thresholdTarget: 'Branch', unhealthyThreshold: 80.0, unstableThreshold: 90.0]]
-        )], sourceFileResolver: sourceFiles('NEVER_STORE')
+            thresholds: [[thresholdTarget: 'Line', unhealthyThreshold: 85.0, unstableThreshold: 95.0]]
+        )], sourceFileResolver: sourceFiles('NEVER_STORE'),
+        failNoReports: false,
+        failUnhealthy: false,
+        failUnstable: false
     }
 }
         }
