@@ -82,7 +82,8 @@ pipeline {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh '''
                         export PYTHONPATH=$WORKSPACE/cp1.2
-                        coverage run --source=cp1.2/app --branch -m pytest cp1.2/test/unit
+                        # coverage run --source=cp1.2/app --branch -m pytest cp1.2/test/unit
+                        coverage run --rcfile=cp1.2/.coveragerc --source=cp1.2/app --branch -m pytest cp1.2/test/unit
                         coverage xml
                     '''
                 }
