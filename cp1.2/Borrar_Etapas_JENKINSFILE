@@ -3,15 +3,25 @@ pipeline {
 
     stages {
 
+        // IGUAL QUE ANTES pero apuntando a TU repo
         stage('Get Code') {
             steps {
                 git 'https://github.com/adrijar/devops-cloud-unir.git'
             }
         }
 
+        // IGUAL pero cambiado bat por sh y dir por ls
+        stage('Build') {
+            steps {
+                echo 'Esto es Python, no hay que compilar nada!'
+                sh 'ls -la'
+            }
+        }
+
         stage('Tests') {
             parallel {
 
+                // IGUAL pero sh en vez de bat y rutas Linux
                 stage('Unit') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
@@ -21,13 +31,9 @@ pipeline {
                             '''
                         }
                     }
-                    post {
-                        always {
-                            junit 'result-unit.xml'
-                        }
-                    }
                 }
 
+                // IGUAL pero sh, flask y wiremock en Linux
                 stage('Rest') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
@@ -36,47 +42,35 @@ pipeline {
                                 export FLASK_ENV=development
                                 flask run &
                                 java -jar /tmp/wiremock.jar --port 9090 --root-dir cp1.2/test/wiremock &
-                                sleep 8
+                                sleep 5
                                 export PYTHONPATH=$WORKSPACE/cp1.2
                                 pytest --junitxml=result-rest.xml cp1.2/test/rest
                             '''
                         }
                     }
-                    post {
-                        always {
-                            junit 'result-rest.xml'
-                        }
-                    }
                 }
 
+                // NUEVO: análisis estático con Flake8
                 stage('Static') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh 'flake8 --format=pylint --exit-zero cp1.2/app > flake8.out'
                         }
                     }
-                    post {
-                        always {
-                            recordIssues qualityGates: [[threshold: 8, type: 'TOTAL', unstable: true], [threshold: 10, type: 'TOTAL', unstable: false]], tools: [flake8(pattern: 'flake8.out')]
-                        }
-                    }
                 }
 
+                // NUEVO: análisis de seguridad con Bandit
                 stage('Security') {
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh 'bandit -r cp1.2/app -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}" --exit-zero'
                         }
                     }
-                    post {
-                        always {
-                            recordIssues qualityGates: [[threshold: 2, type: 'TOTAL', unstable: true], [threshold: 4, type: 'TOTAL', unstable: false]], tools: [pyLint(pattern: 'bandit.out')]
-                        }
-                    }
                 }
             }
         }
 
+        // NUEVO: cobertura de código
         stage('Coverage') {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
@@ -87,13 +81,9 @@ pipeline {
                     '''
                 }
             }
-            post {
-                always {
-                    publishCoverage adapters: [coberturaAdapter('coverage.xml')], sourceFileResolver: sourceFiles('NEVER_STORE')
-                }
-            }
         }
 
+        // NUEVO: pruebas de rendimiento con JMeter
         stage('Performance') {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
@@ -107,10 +97,16 @@ pipeline {
                     '''
                 }
             }
-            post {
-                always {
-                    perfReport sourceDataFiles: 'flask.jtl'
-                }
+        }
+
+        // AMPLIADO: ahora publica resultados de todos los plugins
+        stage('Results') {
+            steps {
+                junit 'result*.xml'
+                recordIssues tools: [flake8(pattern: 'flake8.out'), pyLint(pattern: 'bandit.out')]
+                publishCoverage adapters: [coberturaAdapter('coverage.xml')], sourceFileResolver: sourceFiles('NEVER_STORE')
+                recordIssues tools: [flake8(pattern: 'flake8.out'), pyLint(pattern: 'bandit.out')]
+                perfReport sourceDataFiles: 'flask.jtl'
             }
         }
     }

@@ -11,14 +11,6 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            agent { label 'principal' }
-            steps {
-                echo 'Esto es Python, no hay que compilar nada!'
-                sh 'whoami && hostname && ls -la'
-            }
-        }
-
         stage('Tests') {
             parallel {
 
@@ -33,6 +25,11 @@ pipeline {
                             '''
                         }
                     }
+                    post {
+                        always {
+                            junit 'result-unit.xml'
+                        }
+                    }
                 }
 
                 stage('Rest') {
@@ -45,10 +42,15 @@ pipeline {
                                 export FLASK_ENV=development
                                 flask run &
                                 java -jar /tmp/wiremock.jar --port 9090 --root-dir cp1.2/test/wiremock &
-                                sleep 5
+                                sleep 8
                                 export PYTHONPATH=$WORKSPACE/cp1.2
                                 pytest --junitxml=result-rest.xml cp1.2/test/rest
                             '''
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'result-rest.xml'
                         }
                     }
                 }
@@ -61,7 +63,11 @@ pipeline {
                                 whoami && hostname && echo WORKSPACE=$WORKSPACE
                                 flake8 --format=pylint --exit-zero cp1.2/app > flake8.out
                             '''
-                            stash name: 'flake8-result', includes: 'flake8.out'
+                        }
+                    }
+                    post {
+                        always {
+                            recordIssues qualityGates: [[threshold: 8, type: 'TOTAL', unstable: true], [threshold: 10, type: 'TOTAL', unstable: false]], tools: [flake8(pattern: 'flake8.out')]
                         }
                     }
                 }
@@ -74,7 +80,11 @@ pipeline {
                                 whoami && hostname && echo WORKSPACE=$WORKSPACE
                                 bandit -r cp1.2/app -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}" --exit-zero
                             '''
-                            stash name: 'bandit-result', includes: 'bandit.out'
+                        }
+                    }
+                    post {
+                        always {
+                            recordIssues qualityGates: [[threshold: 2, type: 'TOTAL', unstable: true], [threshold: 4, type: 'TOTAL', unstable: false]], tools: [pyLint(pattern: 'bandit.out')]
                         }
                     }
                 }
@@ -93,6 +103,17 @@ pipeline {
                     '''
                 }
             }
+post {
+    always {
+        publishCoverage adapters: [coberturaAdapter(
+            path: 'coverage.xml',
+            thresholds: [[thresholdTarget: 'Line', unhealthyThreshold: 85.0, unstableThreshold: 95.0]]
+        )], sourceFileResolver: sourceFiles('NEVER_STORE'),
+        failNoReports: false,
+        failUnhealthy: false,
+        failUnstable: false
+    }
+}
         }
 
         stage('Performance') {
@@ -109,26 +130,17 @@ pipeline {
                         export JVM_ARGS="-Xms256m -Xmx512m"
                         jmeter -n -t cp1.2/test/jmeter/flask.jmx -l flask.jtl
                     '''
-                    stash name: 'jmeter-result', includes: 'flask.jtl'
                 }
             }
-        }
-
-        stage('Results') {
-            agent { label 'principal' }
-            steps {
-                unstash 'flake8-result'
-                unstash 'bandit-result'
-                unstash 'jmeter-result'
-                junit 'result*.xml'
-                publishCoverage adapters: [coberturaAdapter('coverage.xml')], sourceFileResolver: sourceFiles('NEVER_STORE')
-                recordIssues tools: [flake8(pattern: 'flake8.out'), pyLint(pattern: 'bandit.out')]
-                perfReport sourceDataFiles: 'flask.jtl'
+            post {
+                always {
+                    perfReport sourceDataFiles: 'flask.jtl'
+                }
             }
         }
     }
 
-        post {
+    post {
         always {
             node('principal') {
                 cleanWs()
