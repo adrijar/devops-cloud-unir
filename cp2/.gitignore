@@ -1,0 +1,92 @@
+# ============================================================
+# .gitignore — Caso Practico 2 (DevOps & Cloud, UNIR)
+# ============================================================
+
+# ----- Terraform -----
+# Estado y backups (contienen secretos y datos sensibles)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Directorios y planes de Terraform
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+
+# Ficheros con valores de variables (contienen secretos)
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Override files (locales)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# ----- Ansible -----
+# Vault password files (NUNCA al repositorio)
+.vault_pass
+.vault_password
+vault_password
+*.vault-pass
+
+# Logs de Ansible
+*.retry
+ansible.log
+
+# ----- SSH y credenciales -----
+# Nunca subir claves privadas, aunque esten fuera de ~/.ssh
+*.pem
+*.key
+id_rsa
+id_ed25519
+cp2_key
+!*.pub
+
+# ----- Secretos generales -----
+.env
+.env.local
+.env.*.local
+secrets.yml
+secrets.yaml
+credentials.json
+*_secrets.*
+
+# ----- Sistema operativo -----
+# Windows
+Thumbs.db
+desktop.ini
+*.lnk
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ----- Editores e IDEs -----
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.project
+.settings/
+
+# ----- Logs y temporales -----
+*.log
+*.tmp
+*.bak
+*.cache

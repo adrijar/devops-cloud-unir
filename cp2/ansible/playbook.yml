@@ -1,0 +1,6 @@
+---
+# playbook.yml
+# Playbook principal de Ansible.
+# Caso Practico 2 - DevOps & Cloud - UNIR
+
+# TODO: roles para configurar VM Podman y AKS app
