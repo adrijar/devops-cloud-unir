@@ -10,7 +10,7 @@
 
 # Directorios y planes de Terraform
 .terraform/
-.terraform.lock.hcl
+# .terraform.lock.hcl   <- versionado para garantizar reproducibilidad
 crash.log
 crash.*.log
 
