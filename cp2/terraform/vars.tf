@@ -2,10 +2,7 @@
 # Declaracion de variables de entrada para Terraform.
 # Caso Practico 2 - DevOps & Cloud - UNIR
 
-variable "subscription_id" {
-  type        = string
-  description = "Azure subscription ID. Se inyecta via la variable de entorno ARM_SUBSCRIPTION_ID."
-}
+
 
 variable "location" {
   type        = string
