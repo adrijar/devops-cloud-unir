@@ -26,3 +26,21 @@ variable "tags" {
   }
   description = "Etiquetas que se aplicaran a todos los recursos creados en Azure."
 }
+
+# Clave SSH publica que se inyectara en la VM Linux.
+# El evaluador debe sobreescribir este valor con su propia clave publica
+# creando un fichero terraform.tfvars con:
+#   ssh_public_key = "ssh-ed25519 AAAA... su-clave"
+variable "ssh_public_key" {
+  type        = string
+  description = "Clave SSH publica para acceder a la VM Linux."
+}
+
+# Nombre de usuario administrador de la VM Linux.
+variable "vm_admin_username" {
+  type        = string
+  description = "Usuario administrador de la VM Linux."
+  default     = "azureadmin"
+}
+
+
