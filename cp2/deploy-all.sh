@@ -101,6 +101,9 @@ echo ""
 # -----------------------------------------------
 # Paso 4: Configurar kubectl para AKS
 # -----------------------------------------------
+# Instalar libreria Python de Kubernetes (requerida por ansible kubernetes.core)
+pip install kubernetes --quiet --break-system-packages 2>/dev/null || pip3 install kubernetes --quiet --break-system-packages 2>/dev/null
+
 echo "=== Paso 4/5: Configurando kubectl para AKS ==="
 az aks get-credentials \
   --resource-group rg-cp2unir \
@@ -113,6 +116,9 @@ echo ""
 # -----------------------------------------------
 # Paso 5: Desplegar WordPress en AKS
 # -----------------------------------------------
+# Asegurar que la libreria Python de Kubernetes esta instalada
+pip install kubernetes --quiet --break-system-packages 2>/dev/null || pip3 install kubernetes --quiet --break-system-packages 2>/dev/null
+echo ""
 echo "=== Paso 5/5: Desplegando WordPress en AKS ==="
 
 # Sustituir el placeholder ACR_LOGIN_SERVER en el manifiesto de WordPress
