@@ -25,14 +25,13 @@ resource "random_string" "acr_suffix" {
 # Azure Container Registry: registry privado de imagenes
 # ============================================================
 # 
-# - admin_enabled = false: no usaremos credenciales admin.
-#   La autenticacion se hara mediante Managed Identity (VM y AKS).
+# - admin_enabled = true: usaremos las credenciales generadas por Azure
 resource "azurerm_container_registry" "acr" {
   name                = "${var.prefix}acr${random_string.acr_suffix.result}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   sku                 = "Basic"
-  admin_enabled       = false
+  admin_enabled       = true
   tags                = var.tags
 }
 
@@ -185,20 +184,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
     sku       = "22_04-lts-gen2"
     version   = "latest"
   }
-
-  # Managed Identity: permite a la VM autenticarse al ACR sin credenciales
-  identity {
-    type = "SystemAssigned"
-  }
 }
-
-# Rol AcrPull: permite a la VM descargar imagenes del ACR
-resource "azurerm_role_assignment" "vm_acr_pull" {
-  scope                = azurerm_container_registry.acr.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_linux_virtual_machine.vm.identity[0].principal_id
-}
-
 # ============================================================
 # Outputs Capa 2
 # ============================================================
@@ -215,4 +201,19 @@ output "vm_admin_username" {
 output "ssh_command" {
   value       = "ssh -i ~/.ssh/cp2_key ${var.vm_admin_username}@${azurerm_public_ip.vm_public_ip.ip_address}"
   description = "Comando SSH para conectarse a la VM."
+}
+
+# ============================================================
+# Outputs adicionales para Ansible
+# ============================================================
+output "acr_admin_username" {
+  value       = azurerm_container_registry.acr.admin_username
+  description = "Usuario admin del ACR para login desde la VM."
+  sensitive   = true
+}
+
+output "acr_admin_password" {
+  value       = azurerm_container_registry.acr.admin_password
+  description = "Contraseña admin del ACR para login desde la VM."
+  sensitive   = true
 }

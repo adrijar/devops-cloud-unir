@@ -1,8 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # deploy.sh
-# Script de orquestacion del despliegue completo.
 # Caso Practico 2 - DevOps & Cloud - UNIR
+# Ejecuta el playbook de Ansible para configurar la VM y desplegar Nginx
 
-set -euo pipefail
-
-echo "TODO: orquestar terraform + ansible"
+cd "$(dirname "$0")"
+ansible-playbook -i hosts playbook.yml

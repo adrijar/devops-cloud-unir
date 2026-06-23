@@ -1,6 +1,134 @@
 ---
 # playbook.yml
-# Playbook principal de Ansible.
 # Caso Practico 2 - DevOps & Cloud - UNIR
+#
+# Configura la VM Linux de Azure para ejecutar un servidor web Nginx
+# en un contenedor de Podman 4.x gestionado como servicio systemd.
 
-# TODO: roles para configurar VM Podman y AKS app
+- name: Configurar VM con Podman y desplegar Nginx
+  hosts: vm
+  become: yes
+
+  vars_files: []
+
+
+  vars:
+    nginx_image: "{{ acr_login_server }}/web-podman-nginx:casopractico2"
+    container_name: "nginx-cp2"
+    ansible_python_interpreter: /usr/bin/python3
+    podman_repo_url: "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_22.04"
+
+  tasks:
+
+    # --------------------------------------------------------
+    # 1. Anadir repositorio oficial de Podman 4.x
+    # --------------------------------------------------------
+
+    - name: Anadir repositorio de Podman 4.x con clave GPG
+      ansible.builtin.deb822_repository:
+        name: podman
+        types: deb
+        uris: "{{ podman_repo_url }}"
+        suites: /
+        signed_by: "{{ podman_repo_url }}/Release.key"
+        state: present
+
+    # --------------------------------------------------------
+    # 2. Instalacion de Podman 4.x y dependencias
+    # --------------------------------------------------------
+
+    - name: Actualizar cache de apt e instalar Podman 4.x
+      ansible.builtin.apt:
+        name:
+          - podman
+          - python3
+          - python3-pip
+        state: latest
+        update_cache: yes
+
+    # --------------------------------------------------------
+    # 3. Autenticacion al ACR de Azure
+    # --------------------------------------------------------
+
+    - name: Login al Azure Container Registry
+      containers.podman.podman_login:
+        registry: "{{ acr_login_server }}"
+        username: "{{ acr_username }}"
+        password: "{{ acr_password }}"
+
+    # --------------------------------------------------------
+    # 4. Descarga de la imagen Nginx desde el ACR
+    # --------------------------------------------------------
+
+    - name: Descargar imagen Nginx del ACR
+      containers.podman.podman_image:
+        name: "{{ nginx_image }}"
+        state: present
+
+    # --------------------------------------------------------
+    # 5. Creacion y arranque del contenedor
+    # --------------------------------------------------------
+
+    - name: Crear y arrancar el contenedor Nginx
+      containers.podman.podman_container:
+        name: "{{ container_name }}"
+        image: "{{ nginx_image }}"
+        state: started
+        ports:
+          - "80:80"
+          - "443:443"
+        generate_systemd:
+          path: /etc/systemd/system/
+          restart_policy: on-failure
+          new: yes
+
+    # --------------------------------------------------------
+    # 6. Configuracion del servicio systemd
+    # --------------------------------------------------------
+
+    - name: Recargar systemd para detectar el nuevo servicio
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Habilitar el servicio systemd del contenedor
+      ansible.builtin.systemd:
+        name: "container-{{ container_name }}"
+        enabled: yes
+
+    # --------------------------------------------------------
+    # 7. Configuracion del firewall (UFW)
+    # --------------------------------------------------------
+
+    - name: Instalar ufw
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+
+    - name: Permitir reenvio de paquetes en UFW (necesario para Podman)
+      ansible.builtin.lineinfile:
+        path: /etc/default/ufw
+        regexp: '^DEFAULT_FORWARD_POLICY='
+        line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
+
+    - name: Permitir acceso SSH (puerto 22)
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+
+    - name: Permitir acceso HTTP (puerto 80)
+      community.general.ufw:
+        rule: allow
+        port: "80"
+        proto: tcp
+
+    - name: Permitir acceso HTTPS (puerto 443)
+      community.general.ufw:
+        rule: allow
+        port: "443"
+        proto: tcp
+
+    - name: Activar el firewall ufw
+      community.general.ufw:
+        state: enabled
+        policy: deny

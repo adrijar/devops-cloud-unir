@@ -93,3 +93,8 @@ $RECYCLE.BIN/
 *.tmp
 *.bak
 *.cache
+
+# ----- Ansible -----
+# El fichero hosts se genera dinamicamente desde Terraform outputs
+# y contiene credenciales sensibles. No versionar.
+ansible/hosts
