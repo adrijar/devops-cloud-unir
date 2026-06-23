@@ -1,0 +1,67 @@
+---
+# aks-wordpress.yml
+# Caso Practico 2 - DevOps & Cloud - UNIR
+#
+# Despliega WordPress con MySQL y almacenamiento persistente en AKS.
+
+- name: Desplegar WordPress en AKS
+  hosts: localhost
+  connection: local
+
+  vars:
+    manifests_dir: "{{ playbook_dir }}/../kubernetes"
+
+  tasks:
+
+    - name: Crear namespace wordpress
+      kubernetes.core.k8s:
+        src: "{{ manifests_dir }}/namespace.yml"
+        state: present
+
+    - name: Crear secret de MySQL
+      kubernetes.core.k8s:
+        src: "{{ manifests_dir }}/mysql-secret.yml"
+        state: present
+
+    - name: Crear PVC de MySQL
+      kubernetes.core.k8s:
+        src: "{{ manifests_dir }}/mysql-pvc.yml"
+        state: present
+
+    - name: Crear PVC de WordPress
+      kubernetes.core.k8s:
+        src: "{{ manifests_dir }}/wordpress-pvc.yml"
+        state: present
+
+    - name: Desplegar MySQL
+      kubernetes.core.k8s:
+        src: "{{ manifests_dir }}/mysql-deployment.yml"
+        state: present
+
+    - name: Desplegar WordPress
+      kubernetes.core.k8s:
+        src: "{{ manifests_dir }}/wordpress-deployment.yml"
+        state: present
+
+    - name: Esperar a que WordPress este listo
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: wordpress
+        name: wordpress
+      register: wordpress_deploy
+      until: >-
+        wordpress_deploy.resources | length > 0 and
+        (wordpress_deploy.resources[0].status.readyReplicas | default(0)) >= 1
+      retries: 30
+      delay: 10
+
+    - name: Obtener IP del servicio LoadBalancer
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: wordpress
+        name: wordpress
+      register: wordpress_svc
+
+    - name: Mostrar URL de WordPress
+      ansible.builtin.debug:
+        msg: "WordPress disponible en: http://{{ wordpress_svc.resources[0].status.loadBalancer.ingress[0].ip }}"
