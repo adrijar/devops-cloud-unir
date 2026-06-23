@@ -217,3 +217,51 @@ output "acr_admin_password" {
   description = "Contraseña admin del ACR para login desde la VM."
   sensitive   = true
 }
+
+# ============================================================
+# CAPA 3: Azure Kubernetes Service (AKS)
+# ============================================================
+
+# Cluster AKS con un unico worker node
+resource "azurerm_kubernetes_cluster" "aks" {
+  name                = "aks-${var.prefix}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  dns_prefix          = "aks-${var.prefix}"
+  sku_tier            = "Free"
+  tags                = var.tags
+
+  # Pool de nodos por defecto (1 worker)
+  default_node_pool {
+    name       = "default"
+    node_count = 1
+    vm_size    = "Standard_B2s"
+  }
+
+  # Identidad gestionada para el cluster
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
+# Rol AcrPull: permite al cluster AKS descargar imagenes del ACR
+resource "azurerm_role_assignment" "aks_acr_pull" {
+  scope                            = azurerm_container_registry.acr.id
+  role_definition_name             = "AcrPull"
+  principal_id                     = azurerm_kubernetes_cluster.aks.kubelet_identity[0].object_id
+  skip_service_principal_aad_check = true
+}
+
+# ============================================================
+# Outputs Capa 3
+# ============================================================
+output "aks_name" {
+  value       = azurerm_kubernetes_cluster.aks.name
+  description = "Nombre del cluster AKS."
+}
+
+output "aks_kube_config" {
+  value       = azurerm_kubernetes_cluster.aks.kube_config_raw
+  description = "Configuracion kubectl para conectarse al cluster AKS."
+  sensitive   = true
+}
