@@ -2,11 +2,7 @@
 # deploy-all.sh
 # Caso Practico 2 - DevOps & Cloud - UNIR
 #
-# Despliegue completo one-click:
-#   1. Terraform apply
-#   2. Build y push de imagenes al ACR
-#   3. Configura VM con Ansible (Nginx en Podman)
-#   4. Despliega WordPress en AKS con Ansible
+# Despliegue completo one-click.
 #
 # Requisitos:
 #   - az login realizado
@@ -21,6 +17,15 @@ TERRAFORM_DIR="$SCRIPT_DIR/terraform"
 ANSIBLE_DIR="$SCRIPT_DIR/ansible"
 IMAGES_DIR="$SCRIPT_DIR/images"
 K8S_DIR="$SCRIPT_DIR/kubernetes"
+
+# Restaurar el placeholder de ACR en el manifiesto siempre,
+# incluso si el script falla a mitad de ejecucion.
+cleanup() {
+  if [ -n "$ACR_LOGIN_SERVER" ]; then
+    sed -i "s|$ACR_LOGIN_SERVER|ACR_LOGIN_SERVER|g" "$K8S_DIR/wordpress-deployment.yml"
+  fi
+}
+trap cleanup EXIT
 
 echo "=============================================="
 echo " Caso Practico 2 - Despliegue completo"
@@ -101,10 +106,12 @@ echo ""
 # -----------------------------------------------
 # Paso 4: Configurar kubectl para AKS
 # -----------------------------------------------
-# Instalar libreria Python de Kubernetes (requerida por ansible kubernetes.core)
-pip install kubernetes --quiet --break-system-packages 2>/dev/null || pip3 install kubernetes --quiet --break-system-packages 2>/dev/null
-
 echo "=== Paso 4/5: Configurando kubectl para AKS ==="
+
+# Instalar libreria Python de Kubernetes (requerida por kubernetes.core)
+pip install kubernetes --quiet --break-system-packages 2>/dev/null \
+  || pip3 install kubernetes --quiet --break-system-packages 2>/dev/null
+
 az aks get-credentials \
   --resource-group rg-cp2unir \
   --name "$AKS_NAME" \
@@ -116,31 +123,27 @@ echo ""
 # -----------------------------------------------
 # Paso 5: Desplegar WordPress en AKS
 # -----------------------------------------------
-# Asegurar que la libreria Python de Kubernetes esta instalada
-pip install kubernetes --quiet --break-system-packages 2>/dev/null || pip3 install kubernetes --quiet --break-system-packages 2>/dev/null
-echo ""
 echo "=== Paso 5/5: Desplegando WordPress en AKS ==="
 
-# Sustituir el placeholder ACR_LOGIN_SERVER en el manifiesto de WordPress
+# Sustituir placeholder ACR_LOGIN_SERVER por la URL real
 sed -i "s|ACR_LOGIN_SERVER|$ACR_LOGIN_SERVER|g" "$K8S_DIR/wordpress-deployment.yml"
 
 cd "$ANSIBLE_DIR"
 ansible-playbook aks-wordpress.yml
 
-# Restaurar el placeholder para que el repo quede limpio
-sed -i "s|$ACR_LOGIN_SERVER|ACR_LOGIN_SERVER|g" "$K8S_DIR/wordpress-deployment.yml"
+# Obtener IP del LoadBalancer
+WP_IP=$(kubectl get svc -n wordpress wordpress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pendiente")
 
 echo ""
 echo "=============================================="
 echo " Despliegue completado"
 echo "=============================================="
 echo ""
-echo " Nginx (VM):     https://$VM_IP"
-echo " Credenciales:   admin / casopractico2"
+echo " Nginx (VM):      https://$VM_IP"
+echo " Credenciales:    admin / casopractico2"
 echo ""
-echo " WordPress (AKS): ejecutar 'kubectl get svc -n wordpress'"
-echo "                   para obtener la IP del LoadBalancer"
+echo " WordPress (AKS): http://$WP_IP"
 echo ""
-echo " ACR:            $ACR_LOGIN_SERVER"
-echo " SSH:            ssh -i ~/.ssh/cp2_key azureadmin@$VM_IP"
+echo " ACR:             $ACR_LOGIN_SERVER"
+echo " SSH:             ssh -i ~/.ssh/cp2_key azureadmin@$VM_IP"
 echo "=============================================="

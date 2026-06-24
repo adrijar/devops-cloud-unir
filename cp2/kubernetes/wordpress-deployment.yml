@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: wordpress
-          image: cp2uniracrnn5sj7.azurecr.io/web-aks-wordpress:casopractico2
+          image: ACR_LOGIN_SERVER/web-aks-wordpress:casopractico2
           env:
             - name: WORDPRESS_DB_HOST
               value: mysql

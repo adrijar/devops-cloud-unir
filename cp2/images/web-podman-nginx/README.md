@@ -8,7 +8,7 @@ con el motor de contenedores **Podman**, gestionada como servicio de systemd.
 
 ## Caracteristicas
 
-- Base: `nginx:1.27-alpine` (~25 MB)
+- Base: `nginx:1.27-alpine` (~57 MB)
 - Servidor HTTPS en puerto 443
 - Redireccion HTTP (80) -> HTTPS (443)
 - Certificado x.509 autofirmado generado en build-time
