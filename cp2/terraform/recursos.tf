@@ -1,5 +1,5 @@
 # recursos.tf
-# Definicion de los recursos de Azure: Resource Group y ACR.
+# Definicion de todos los recursos de Azure para el Caso Practico 2.
 # Caso Practico 2 - DevOps & Cloud - UNIR
 
 # ============================================================

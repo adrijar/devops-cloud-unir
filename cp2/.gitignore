@@ -3,98 +3,53 @@
 # ============================================================
 
 # ----- Terraform -----
-*.tfvars
-*.tfvars.json
+.terraform/
 terraform.tfstate
 terraform.tfstate.backup
-.terraform/
-.terraform.lock.hcl
-
-
-# Directorios y planes de Terraform
-.terraform/
-# .terraform.lock.hcl   <- versionado para garantizar reproducibilidad
 crash.log
-crash.*.log
-
-# Ficheros con valores de variables (contienen secretos)
 *.tfvars
 *.tfvars.json
 !*.tfvars.example
-
-# Override files (locales)
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-
-# CLI configuration files
 .terraformrc
 terraform.rc
 
 # ----- Ansible -----
-# Vault password files (NUNCA al repositorio)
-.vault_pass
-.vault_password
-vault_password
-*.vault-pass
-
-# Logs de Ansible
+# El fichero hosts se genera dinamicamente por deploy-all.sh
+# y contiene credenciales del ACR. No versionar.
+ansible/hosts
 *.retry
 ansible.log
+.vault_pass
+.vault_password
 
 # ----- SSH y credenciales -----
-# Nunca subir claves privadas, aunque esten fuera de ~/.ssh
 *.pem
 *.key
 id_rsa
 id_ed25519
 cp2_key
 !*.pub
-
-# ----- Secretos generales -----
 .env
 .env.local
-.env.*.local
 secrets.yml
-secrets.yaml
 credentials.json
-*_secrets.*
 
 # ----- Sistema operativo -----
-# Windows
 Thumbs.db
 desktop.ini
-*.lnk
-$RECYCLE.BIN/
-
-# macOS
 .DS_Store
-.AppleDouble
-.LSOverride
-
-# Linux
 *~
 .directory
-.Trash-*
 
-# ----- Editores e IDEs -----
+# ----- Editores -----
 .vscode/
 .idea/
 *.swp
 *.swo
-*.swn
-*~
-.project
-.settings/
-
-# ----- Logs y temporales -----
-*.log
-*.tmp
 *.bak
+*.tmp
 *.cache
-
-# ----- Ansible -----
-# El fichero hosts se genera dinamicamente desde Terraform outputs
-# y contiene credenciales sensibles. No versionar.
-ansible/hosts
